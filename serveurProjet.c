@@ -14,12 +14,18 @@
 #define TAILLE_MSG 256
 #define TAILLE_CONTENU 4096
 #define TAILLE_FILE 5
+#define NOM_LOG "tmp/http3300807.log"
 
 /* TODO :
-   - Finir l'analyse de requete
-   - case 200 (completer)
-   - Faire le client et tester la Q1
+   - Q1 Finir l'analyse de requete.
+   - Q1 Faire le mime.
+   - Q1 Regler l'erreur de segmentation quand deux clients a la suite se connectent.
+   - Q1 Regler le clase du close(resultat) si le fichier n'existe pas / n'a pas les droits.
+
+   - Q2 Ecrire dans le log.
 */
+
+pthread_mutex_t mutex;
 
 /* Fonction d'analyse de requete */
 int analyse_requete(char *msg, int *resultat){
@@ -79,11 +85,18 @@ void* run(void *arg){
   int *sock_com_thread = (int *)arg; /* Descripteur de la socket de communication */
   int resultat; /* Stocke le descripteur de fichier */
   int resultat_fonction; /* Retour de la fonction d'analyse */
+  int fd; /* Descripteur du fichier log */
   char **msg; /* Stocke la requete du client */
   char *envoi; /* Stocke la reponse que l'on va envoyer au client */
   char *lecture; /* Stocke le contenu du fichier */
   
   *msg = malloc(sizeof(char) * TAILLE_MSG);
+  fd = open(NOM_LOG, O_CREAT | O_SYNC | O_RDWR, 0600);
+
+  if(fd < 0){
+    perror("[ERREUR] open() du fichier log ! \n");
+    return -1
+  }
   
   /* Reception de la requete du client */
   if(read(*sock_com_thread, *msg, (sizeof(char) * TAILLE_MSG)) < 0){
@@ -132,10 +145,17 @@ void* run(void *arg){
     printf("[ERREUR] Thread %d | WTF ! \n", (int)pthread_self());
     break;
   }
-	
+
+  /* TODO : Ajout dans le log */
+  pthread_mutex_lock(&mutex);
+  if(){
+
+  }
+  
+  pthread_mutex_unlock(&mutex);
+  
   /* Liberation des ressources */
-  /* free(msg); */
-  close(resultat); /* /!\ */
+  close(resultat); /* TODO : /!\ */
   shutdown(*sock_com_thread, 2);
   close(*sock_com_thread);
   printf("[DEBUG] Thread %d | Fermeture de la socket et liberation memoire : OK ! \n", (int)pthread_self());
@@ -164,6 +184,7 @@ int main(int argc, char* argv[]){
   *thread_number = 0;
   port = atoi(argv[1]);
   nbMaxClients = atoi(argv[2]);
+  pthread_mutex_init(&mutex, NULL);
 	
   /* Creation de la socket du serveur */
   if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
