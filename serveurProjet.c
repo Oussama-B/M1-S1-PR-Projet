@@ -12,6 +12,7 @@
 #include <signal.h>
 #include <errno.h>
 #define TAILLE_MSG 256
+#define TAILLE_CONTENU 4096
 #define TAILLE_FILE 5
 
 /* TODO :
@@ -80,23 +81,32 @@ void* run(void *arg){
   int resultat_fonction; /* Retour de la fonction d'analyse */
   char **msg; /* Stocke la requete du client */
   char *envoi; /* Stocke la reponse que l'on va envoyer au client */
+  char *lecture; /* Stocke le contenu du fichier */
   
   *msg = malloc(sizeof(char) * TAILLE_MSG);
-	
+  
   /* Reception de la requete du client */
   if(read(*sock_com_thread, *msg, (sizeof(char) * TAILLE_MSG)) < 0){
     perror("[ERREUR] read() chemin ! \n");
     return;
   }
   printf("[DEBUG] Thread %d | Reception d'une requete du client : %s \n", (int)pthread_self(), *msg);
-	
+  
   /* Traitement */
   resultat_fonction = analyse_requete(*msg, &resultat);
   switch(resultat_fonction){
   case 200:
-    /* TODO */
-    envoi = malloc(sizeof(char) * 25);
-    strcpy(envoi, "HTTP/1.1 200 OK \nContent-Type: text/html \n");
+    envoi = malloc(sizeof(char) * TAILLE_CONTENU);
+    lecture = malloc(sizeof(char) * TAILLE_CONTENU);
+    strcpy(envoi, "HTTP/1.1 200 OK \nContent-Type: text/html \n\n");
+
+    printf("[DEBUG] Descripteur du fichier : %d ! \n", resultat);
+    if(read(resultat, lecture, TAILLE_CONTENU) < 0){
+      perror("[ERREUR] Lecture du fichier ! \n");
+      return;
+    }
+    strcat(envoi, lecture);
+
     printf("Le serveur va repondre : %s \n", envoi);
     if(write(*sock_com_thread, (char *) envoi, strlen(envoi)) == -1){
       perror("[ERREUR] write() 200 ! \n");
