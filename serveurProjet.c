@@ -24,6 +24,55 @@
    - Q2 Ecrire dans le log.
 */
 
+
+char * get_mime_type(char* path){
+  char * content_type = (char *) malloc (sizeof(char) * 32);
+  char * line = (char *) malloc (sizeof(char) * 256); /* Buffer pour chaque ligne */
+  FILE * fic;
+  int read = 0;
+  int i = 0;
+  size_t size = 256;
+  char * token = malloc (256 * sizeof(char));
+  char * error = "Error (Incompatible or wrong extension)";
+  fic = fopen("/etc/mime.types", "r");
+
+  if (fic == NULL){
+    perror("Erreur fichier /etc/mime.types\n");
+    return NULL;
+  }
+
+
+  while (path[0] != '.'){ /* Permet d'avancer dans le chemin jusqu'a l'extension */
+    path++;
+  }
+
+  path++ ; /* On se decale a 1 char apres le . */
+
+  while (getline(&line,&size,fic) != -1){ /* Boucle sur toutes les lignes deu fichier */
+    if (line[0] == 't'){ /* Detecte les lignes "text/"  */
+      token = strtok(line," \t\r\n\v\f"); /* Eclate les lignes */
+      strcpy(content_type,token);
+      while (token != NULL){
+        if (strcmp(token,path)==0){
+           printf("--------------> %s\n",content_type);
+           return content_type; /* Compare extension et token */
+        }
+        token = strtok(NULL, " \t\r\n\v\f");
+      }
+    }
+    i++;
+
+  }
+
+  return error;
+
+}
+
+
+
+
+
+
 pthread_mutex_t mutex_fichier;
 
 /* Fonction d'analyse de requete */
