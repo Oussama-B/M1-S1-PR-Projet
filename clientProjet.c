@@ -31,7 +31,7 @@ int main(int argc, char* argv[]){
 	
 	/* Verification des arguments */
 	
-	if(argc != 4){
+	if(argc != 3){
 	  perror("[ERREUR] Nombre args ! \n");
 	}
 	
@@ -39,8 +39,9 @@ int main(int argc, char* argv[]){
 	port = atoi(argv[2]);
 	sockaddr_in_size = sizeof(dest);
 	response = malloc(sizeof(char) * TAILLE_MSG);
-	envoi = malloc(sizeof(char) * 48);
-	strcpy(envoi, argv[3]);
+	envoi = malloc(sizeof(char) * TAILLE_MSG); /* 48 */
+	/* strcpy(envoi, argv[3]); */
+	read(STDIN_FILENO, envoi, TAILLE_MSG);
 	
 	/* Creation de la socket du client */
 	if((sock = socket(AF_INET, SOCK_STREAM, 0)) == -1){
