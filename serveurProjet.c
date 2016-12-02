@@ -17,7 +17,6 @@
 #define NOM_LOG "tmp/http3300807.log"
 
 /* TODO :
-   - Q1 Finir l'analyse de requete.
    - Q1 Faire le mime.
    - Q1 Regler l'erreur de segmentation quand deux clients a la suite se connectent.
    - Q1 Regler le clase du close(resultat) si le fichier n'existe pas / n'a pas les droits.
@@ -25,13 +24,14 @@
    - Q2 Ecrire dans le log.
 */
 
-pthread_mutex_t mutex;
+pthread_mutex_t mutex_fichier;
 
 /* Fonction d'analyse de requete */
 int analyse_requete(char *msg, int *resultat){
-  char message[200]; /* Stocke le message */
-  char delimiteurs[]=" \t\r\n\v\f";  /* Stocke les delimiteurs */
+  char *message; /* Stocke le message */
   char *token[10]; /* Stocke des parties de la requetes */
+  char *chemin;
+  char delimiteurs[]=" \t\r\n\v\f";  /* Stocke les delimiteurs */
   int flag_requete; /* Restera a 1 si la requete est syntaxiquement correct */
   int i;
   
@@ -43,12 +43,16 @@ int analyse_requete(char *msg, int *resultat){
      "127.0.0.1" = token[4]
    */
 
+  /* Initialisation des variables */
   flag_requete = 1;
   i = 0;
+  message = malloc(sizeof(char) * strlen(msg));
+  chemin = malloc(sizeof(char) * (strlen(msg)-1));
   strcpy(message, msg); /* On est oblige car strtok modifie la 'source' */
   printf("[DEBUG] Toutes les initilisations d'analyse_requete : OK ! \n");
-  printf("String qui va utiliser par strtok : %s \n", message);
-  
+  printf("[DEBUG] String qui va etre utilisee par strtok() : %s \n", message);
+
+  /* 'Decoupage' de la requete */
   token[i] = strtok(message, delimiteurs); /* Prend le "GET " */
   while(token[i] != NULL){
     printf("[DEBUG] token[%d] = %s \n", i, token[i]);
@@ -83,12 +87,8 @@ int analyse_requete(char *msg, int *resultat){
     return -1;
   }
 
-
-  printf("[DEBUG] Nom du fichier trouve %s ! \n", token[1]);
- 
-  /*Traitement du token[1] corresspondant au fichier trouvé (enlever le /)*/
-    char* chemin=token[1]+1;
-    printf("[DEBUG] Nom du fichier trouve sans /: %s ! \n", chemin);
+  chemin = token[1] + 1;
+  printf("[DEBUG] Nom du fichier trouve %s ! \n", chemin);
   
   /* Verification de l'existence et des droits sur le fichier */
   if(access(chemin, R_OK) != 0){
@@ -113,14 +113,15 @@ void* run(void *arg){
   char **msg; /* Stocke la requete du client */
   char *envoi; /* Stocke la reponse que l'on va envoyer au client */
   char *lecture; /* Stocke le contenu du fichier */
-  
-  *msg = malloc(sizeof(char) * TAILLE_MSG);
-  fd = open(NOM_LOG, O_CREAT | O_SYNC | O_RDWR, 0600);
 
+  *msg = malloc(sizeof(char) * TAILLE_MSG);
+  
+  fd = open(NOM_LOG, O_CREAT | O_SYNC | O_RDWR, 0600);
   if(fd < 0){
     perror("[ERREUR] open() du fichier log ! \n");
     return;
   }
+  printf("[DEBUG] Ouverture du fichier log : OK ! \n");
   
   /* Reception de la requete du client */
   if(read(*sock_com_thread, *msg, (sizeof(char) * TAILLE_MSG)) < 0){
@@ -171,15 +172,18 @@ void* run(void *arg){
   }
 
   /* TODO : Ajout dans le log */
-  pthread_mutex_lock(&mutex);
+  pthread_mutex_lock(&mutex_fichier);
   if(0){
   
   }
   
-  pthread_mutex_unlock(&mutex);
+  pthread_mutex_unlock(&mutex_fichier);
   
   /* Liberation des ressources */
+  free(envoi);
+  free(lecture);
   close(resultat); /* TODO : /!\ */
+  close(fd);
   shutdown(*sock_com_thread, 2);
   close(*sock_com_thread);
   printf("[DEBUG] Thread %d | Fermeture de la socket et liberation memoire : OK ! \n", (int)pthread_self());
@@ -208,7 +212,7 @@ int main(int argc, char* argv[]){
   *thread_number = 0;
   port = atoi(argv[1]);
   nbMaxClients = atoi(argv[2]);
-  pthread_mutex_init(&mutex, NULL);
+  pthread_mutex_init(&mutex_fichier, NULL);
 	
   /* Creation de la socket du serveur */
   if((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
