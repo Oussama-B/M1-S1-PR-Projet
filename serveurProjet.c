@@ -29,45 +29,69 @@ pthread_mutex_t mutex;
 
 /* Fonction d'analyse de requete */
 int analyse_requete(char *msg, int *resultat){
-  int resultat_analyse1; /* Analyse de "GET /" */
-  int resultat_analyse2; /* Analyse de " HTTP/1.1 \n Host: 127.0.0.1 \n \n" */
-  int fd; /* Descripteur du fichier demande */
-  int i, j;
-  char debut_msg[5];
-  char nom_fichier[TAILLE_MSG];
+  char message[200]; /* Stocke le message */
+  char delimiteurs[]=" \t\r\n\v\f";  /* Stocke les delimiteurs */
+  char *token[10]; /* Stocke des parties de la requetes */
+  int flag_requete; /* Restera a 1 si la requete est syntaxiquement correct */
+  int i;
+  
+  /* Valeur des tokens utilise par strtok :
+     "GET " = token[0],
+     /chemin = token[1],
+     "HTTP/1.1" = token[2]
+     "Host:" = token[3]
+     "127.0.0.1" = token[4]
+   */
 
-  j = 0;
-
-  /* Decoupage pour la premiere analyse */
-  for(i = 0; i < 5; i++){
-    debut_msg[i] = msg[i];
+  flag_requete = 1;
+  i = 0;
+  strcpy(message, msg); /* On est oblige car strtok modifie la 'source' */
+  printf("[DEBUG] Toutes les initilisations d'analyse_requete : OK ! \n");
+  printf("String qui va utiliser par strtok : %s \n", message);
+  
+  token[i] = strtok(message, delimiteurs); /* Prend le "GET " */
+  while(token[i] != NULL){
+    printf("[DEBUG] token[%d] = %s \n", i, token[i]);
+    i++;
+    token[i] = strtok(NULL, delimiteurs);
+  }
+  
+  /* Comparaison de chaque tokens */
+  if(strcmp(token[0], "GET") != 0){
+    printf("[ERREUR] Methode ! \n");
+    flag_requete = 0;
+  }
+  
+  if(strcmp(token[2],"HTTP/1.1") != 0){
+    printf("[ERREUR] Protocole !\n");
+    flag_requete = 0;
+  }
+  
+  if(strcmp(token[3],"Host:") != 0){
+    printf("[ERREUR] Host ! \n");
+    flag_requete = 0;
+  }
+  
+  if(strcmp(token[4],"127.0.0.1") != 0){
+    printf("[ERREUR] Adresse ! \n");
+    flag_requete = 0;
   }
 
-  /* Premiere analyse */
-  resultat_analyse1 = strcmp(debut_msg, "GET /");
-  if(resultat_analyse1 != 0){
-    printf("[ERREUR] Mauvaise syntaxe de requete ! \n");
+  /* Si flag_requete != 1 alors la requete n'est pas bien formee */
+  if(flag_requete != 1){
+    printf("[ERREUR] Requete mal formee ! \n");
     return -1;
   }
-  printf("[DEBUG] Premiere analyse : OK ! \n");
 
-  /* TODO : Faire les autres analyses */
 
-  /* Decoupage pour trouver le nom du fichier */
-  while(msg[i] != ' '){
-    nom_fichier[j] = msg[i];
-    j++;
-    i++;
-    if(j == TAILLE_MSG){
-      printf("[ERREUR] Nom du fichier trop long ! \n");
-      return -1;
-    }
-  }
-  nom_fichier[j] = '\0';
-  printf("[DEBUG] Nom du fichier trouve %s ! \n", nom_fichier);
-
+  printf("[DEBUG] Nom du fichier trouve %s ! \n", token[1]);
+ 
+  /*Traitement du token[1] corresspondant au fichier trouvé (enlever le /)*/
+    char* chemin=token[1]+1;
+    printf("[DEBUG] Nom du fichier trouve sans /: %s ! \n", chemin);
+  
   /* Verification de l'existence et des droits sur le fichier */
-  if(access(nom_fichier, R_OK) != 0){
+  if(access(chemin, R_OK) != 0){
     if(errno == ENOENT){
       printf("[ERREUR] Fichier introuvable ! \n");
       return 404;
@@ -77,7 +101,7 @@ int analyse_requete(char *msg, int *resultat){
     }
   }
   printf("[DEBUG] Existence et droits du fichier : OK ! \n");
-  *resultat = open(nom_fichier, O_RDONLY);
+  *resultat = open(chemin, O_RDONLY);
   return 200;
 }
 
@@ -95,7 +119,7 @@ void* run(void *arg){
 
   if(fd < 0){
     perror("[ERREUR] open() du fichier log ! \n");
-    return -1
+    return;
   }
   
   /* Reception de la requete du client */
@@ -148,8 +172,8 @@ void* run(void *arg){
 
   /* TODO : Ajout dans le log */
   pthread_mutex_lock(&mutex);
-  if(){
-
+  if(0){
+  
   }
   
   pthread_mutex_unlock(&mutex);
