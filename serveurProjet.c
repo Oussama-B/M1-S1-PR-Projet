@@ -110,11 +110,10 @@ void* run(void *arg){
   int resultat; /* Stocke le descripteur de fichier */
   int resultat_fonction; /* Retour de la fonction d'analyse */
   int fd; /* Descripteur du fichier log */
-  char **msg; /* Stocke la requete du client */
+  char msg[200]; /* Stocke la requete du client */
   char *envoi; /* Stocke la reponse que l'on va envoyer au client */
   char *lecture; /* Stocke le contenu du fichier */
 
-  *msg = malloc(sizeof(char) * TAILLE_MSG);
   
   fd = open(NOM_LOG, O_CREAT | O_SYNC | O_RDWR, 0600);
   if(fd < 0){
@@ -124,14 +123,14 @@ void* run(void *arg){
   printf("[DEBUG] Ouverture du fichier log : OK ! \n");
   
   /* Reception de la requete du client */
-  if(read(*sock_com_thread, *msg, (sizeof(char) * TAILLE_MSG)) < 0){
+  if(read(*sock_com_thread, msg, (sizeof(char) * TAILLE_MSG)) < 0){
     perror("[ERREUR] read() chemin ! \n");
     return;
   }
-  printf("[DEBUG] Thread %d | Reception d'une requete du client : %s \n", (int)pthread_self(), *msg);
+  printf("[DEBUG] Thread %d | Reception d'une requete du client : %s \n", (int)pthread_self(), msg);
   
   /* Traitement */
-  resultat_fonction = analyse_requete(*msg, &resultat);
+  resultat_fonction = analyse_requete(msg, &resultat);
   switch(resultat_fonction){
   case 200:
     envoi = malloc(sizeof(char) * TAILLE_CONTENU);
